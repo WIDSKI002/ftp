@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f6fa">
+  <title>CloudVault — Twoje pliki, pod kontrolą</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <div id="login-screen" class="login-screen hidden">
+    <form id="login-form" class="login-card">
+      <div class="brand-mark">C</div>
+      <p class="eyebrow">PRYWATNA PRZESTRZEŃ</p>
+      <h1>Witaj ponownie</h1>
+      <p class="muted">Zaloguj się do swojego CloudVault.</p>
+      <label for="username">Login</label>
+      <input id="username" name="username" autocomplete="username" required>
+      <label for="password">Hasło</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required>
+      <button class="button primary full" type="submit">Zaloguj się <span>→</span></button>
+      <p id="login-error" class="form-error" role="alert"></p>
+      <div class="secure-note"><span class="dot"></span> Prywatna przestrzeń. Tylko dla Ciebie.</div>
+    </form>
+  </div>
+
+  <div id="app" class="app-shell hidden">
+    <aside class="sidebar">
+      <a class="brand" href="#" aria-label="CloudVault — strona główna">
+        <span class="brand-mark">C</span><span>cloud<span class="brand-light">vault</span></span>
+      </a>
+      <div class="nav-label">PRZESTRZEŃ</div>
+      <nav class="main-nav" aria-label="Główna nawigacja">
+        <button class="nav-item active" data-view="files"><span class="nav-icon">▦</span> Pliki <span class="nav-chevron">⌄</span></button>
+        <button class="nav-item" data-view="notes"><span class="nav-icon">▤</span> Notatki</button>
+        <button class="nav-item" data-view="favorites"><span class="nav-icon">☆</span> Ulubione</button>
+      </nav>
+      <div class="nav-label storage-label">TWOJE CHMURY</div>
+      <div class="cloud-link" id="google-cloud"><span class="provider-dot google-dot"></span><span>Google Drive</span><span class="connection-state">—</span></div>
+      <div class="cloud-link" id="mega-cloud"><span class="provider-dot mega-dot"></span><span>MEGA</span><span class="connection-state">—</span></div>
+      <div class="sidebar-bottom">
+        <div class="storage-card">
+          <div class="storage-card-heading"><span>Twoje miejsce</span><span>↗</span></div>
+          <div class="storage-meter"><span id="storage-meter-fill"></span></div>
+          <p id="storage-summary">Sprawdzanie miejsca…</p>
+          <div id="storage-breakdown" class="storage-breakdown"></div>
+        </div>
+        <button class="nav-item" data-view="settings"><span class="nav-icon">⚙</span> Ustawienia</button>
+        <div class="profile">
+          <div class="avatar">A</div><div class="profile-name"><strong id="profile-username">Admin</strong><span>Właściciel</span></div>
+          <button id="logout-button" class="icon-button" title="Wyloguj" aria-label="Wyloguj">↗</button>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main-area">
+      <header class="topbar">
+        <div id="breadcrumbs" class="breadcrumbs"><span>Moje pliki</span></div>
+        <div class="topbar-actions">
+          <label class="search-box"><span>⌕</span><input id="global-search" type="search" placeholder="Szukaj plików..." aria-label="Szukaj plików"></label>
+          <button id="theme-toggle" class="icon-button theme-button" title="Zmień motyw" aria-label="Zmień motyw">☾</button>
+          <button class="avatar small-avatar" aria-label="Profil">A</button>
+        </div>
+      </header>
+
+      <section id="files-view" class="view-panel">
+        <div class="page-heading">
+          <div><p class="eyebrow">TWOJE PLIKI</p><h1>Moje pliki <span class="heading-count" id="file-count"></span></h1><p class="muted">Wszystko w jednym miejscu, bez względu na chmurę.</p></div>
+          <div class="heading-actions">
+            <button id="new-folder-button" class="button secondary">＋ Nowy folder</button>
+            <button id="upload-button" class="button primary"><span>↑</span> Prześlij pliki</button>
+            <input id="file-input" type="file" multiple hidden>
+          </div>
+        </div>
+        <div id="dropzone" class="dropzone">
+          <span>Przeciągnij pliki tutaj lub <button id="drop-upload" class="text-button">wybierz z urządzenia</button></span>
+          <span class="dropzone-hint">Pliki pozostają w wybranej chmurze</span>
+        </div>
+        <div id="upload-progress" class="upload-progress hidden"><span id="upload-progress-label">Przesyłanie…</span><progress id="upload-progress-bar" max="100" value="0"></progress></div>
+        <div class="toolbar">
+          <div class="filter-chips">
+            <button class="chip active" data-provider="all">Wszystkie</button>
+            <button class="chip" data-provider="google"><span class="provider-dot google-dot"></span> Google Drive</button>
+            <button class="chip" data-provider="mega"><span class="provider-dot mega-dot"></span> MEGA</button>
+          </div>
+          <div class="toolbar-right">
+            <select id="file-filter" aria-label="Filtruj pliki"><option value="all">Wszystkie typy</option><option value="folder">Foldery</option><option value="file">Pliki</option></select>
+            <select id="file-sort" aria-label="Sortuj pliki"><option value="name">Nazwa A–Z</option><option value="modified">Ostatnia modyfikacja</option><option value="size">Rozmiar</option></select>
+          </div>
+        </div>
+        <div class="file-table-wrap">
+          <table class="file-table"><thead><tr><th><button class="sort-heading" data-sort="name">Nazwa <span>↕</span></button></th><th>Lokalizacja</th><th><button class="sort-heading" data-sort="size">Rozmiar <span>↕</span></button></th><th><button class="sort-heading" data-sort="modified">Zmodyfikowano <span>↕</span></button></th><th></th></tr></thead><tbody id="file-list"></tbody></table>
+          <div id="empty-files" class="empty-state hidden"><div class="empty-icon">▦</div><h3>Nie znaleziono plików</h3><p>Połącz chmurę w ustawieniach albo zmień wyszukiwanie.</p></div>
+        </div>
+      </section>
+
+      <section id="notes-view" class="view-panel hidden">
+        <div class="page-heading notes-heading"><div><p class="eyebrow">TWOJE MYŚLI</p><h1>Notatki</h1><p class="muted">Prywatne, automatycznie zapisywane.</p></div><button id="new-note-button" class="button primary">＋ Nowa notatka</button></div>
+        <div class="notes-layout">
+          <aside class="notes-list-panel"><label class="search-box note-search"><span>⌕</span><input id="note-search" type="search" placeholder="Szukaj notatek..." aria-label="Szukaj notatek"></label><div id="notes-list" class="notes-list"></div></aside>
+          <div id="note-editor" class="note-editor"><div id="note-placeholder" class="note-placeholder"><div class="empty-icon">▤</div><h3>Twoja przestrzeń na myśli</h3><p>Wybierz notatkę lub utwórz nową.</p></div><div id="note-content" class="note-content hidden"><div class="note-actions"><span id="note-save-status">Zapisane</span><button id="pin-note-button" class="icon-button" title="Przypnij notatkę" aria-label="Przypnij notatkę">☆</button><button id="delete-note-button" class="icon-button danger-icon" title="Usuń notatkę" aria-label="Usuń notatkę">⌫</button></div><input id="note-title" class="note-title" placeholder="Tytuł notatki" aria-label="Tytuł notatki"><p id="note-date" class="note-date"></p><textarea id="note-body" class="note-body" placeholder="Zacznij pisać..."></textarea></div></div>
+        </div>
+      </section>
+
+      <section id="favorites-view" class="view-panel hidden">
+        <div class="page-heading"><div><p class="eyebrow">SZYBKI DOSTĘP</p><h1>Ulubione</h1><p class="muted">Najważniejsze pliki zawsze pod ręką.</p></div></div>
+        <div class="file-table-wrap"><table class="file-table"><thead><tr><th>Nazwa</th><th>Lokalizacja</th><th>Rozmiar</th><th>Zmodyfikowano</th><th></th></tr></thead><tbody id="favorites-list"></tbody></table><div id="empty-favorites" class="empty-state hidden"><div class="empty-icon">☆</div><h3>Brak ulubionych plików</h3><p>Dodaj pliki do ulubionych, klikając gwiazdkę przy nazwie.</p></div></div>
+      </section>
+
+      <section id="settings-view" class="view-panel hidden">
+        <div class="page-heading"><div><p class="eyebrow">KONTO I POŁĄCZENIA</p><h1>Ustawienia</h1><p class="muted">Zarządzaj połączeniami z chmurami i wyglądem.</p></div></div>
+        <div class="settings-grid">
+          <article class="settings-card"><div class="settings-icon google-icon">G</div><div class="settings-copy"><h3>Google Drive</h3><p id="google-status">Sprawdzanie połączenia…</p></div><a id="google-connect" class="button secondary settings-button" href="/oauth/google">Połącz Drive</a></article>
+          <article class="settings-card"><div class="settings-icon mega-icon">M</div><div class="settings-copy"><h3>MEGA przez MEGAcmd</h3><p id="mega-status">Wymaga lokalnej konfiguracji MEGAcmd na serwerze.</p></div><span class="settings-badge">Konfiguracja serwera</span></article>
+          <article class="settings-card"><div class="settings-icon">◐</div><div class="settings-copy"><h3>Wygląd</h3><p>Wybierz jasny lub ciemny motyw.</p></div><button id="settings-theme-toggle" class="button secondary settings-button">Zmień motyw</button></article>
+          <div class="settings-footnote"><strong>Twoja prywatność</strong><p>Pliki przesyłane są bezpośrednio do wybranej chmury. Notatki i tokeny Google są przechowywane po stronie serwera. Hasło nie jest przechowywane w postaci jawnej.</p></div>
+        </div>
+      </section>
+      <div id="toast" class="toast" role="status"></div>
+    </main>
+  </div>
+
+      <dialog id="file-actions-dialog" class="confirm-dialog file-actions-dialog">
+        <form method="dialog">
+          <h2 id="file-actions-title">Opcje pliku</h2>
+          <div id="file-actions-list" class="file-actions-list"></div>
+          <button class="button secondary" value="cancel">Anuluj</button>
+        </form>
+      </dialog>
+      <dialog id="move-dialog" class="confirm-dialog move-dialog">
+        <form method="dialog">
+          <h2>Przenieś do folderu</h2>
+          <p id="move-folder-path" class="move-folder-path"></p>
+          <div id="move-folder-list" class="file-actions-list"></div>
+          <div class="dialog-actions">
+            <button class="button secondary" value="cancel">Anuluj</button>
+            <button id="move-select-here" class="button primary" type="button">Wybierz ten folder</button>
+          </div>
+        </form>
+      </dialog>
+      <dialog id="confirm-dialog" class="confirm-dialog"><form method="dialog"><div class="dialog-icon">!</div><h2 id="dialog-title">Potwierdź działanie</h2><p id="dialog-message"></p><div class="dialog-actions"><button class="button secondary" value="cancel">Anuluj</button><button id="dialog-confirm" class="button danger" value="confirm">Usuń</button></div></form></dialog>
+</body>
+</html>
