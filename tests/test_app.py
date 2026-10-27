@@ -159,6 +159,16 @@ class CloudVaultTests(unittest.TestCase):
                 self.assertIsInstance(database, PostgresDatabase)
                 self.assertIn("sslmode=require", connect.call_args.args[0])
                 self.assertEqual(len(connection.executed), 4)
+                row_factory = connect.call_args.kwargs["row_factory"]
+                self.assertEqual(
+                    row_factory(SimpleNamespace(description=None))((1, 2)),
+                    (1, 2),
+                )
+                row = row_factory(
+                    SimpleNamespace(description=[SimpleNamespace(name="count")])
+                )((3,))
+                self.assertEqual(row["count"], 3)
+                self.assertEqual(row[0], 3)
                 database.close()
 
     def test_render_configuration_can_disable_mega_without_breaking_google(self):

@@ -431,6 +431,8 @@ def get_db():
                     return super().__getitem__(key)
 
             def hybrid_row(cursor):
+                if cursor.description is None:
+                    return lambda values: values
                 columns = [column.name for column in cursor.description]
                 return lambda values: HybridRow(zip(columns, values))
 
