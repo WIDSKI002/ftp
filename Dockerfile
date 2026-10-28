@@ -13,6 +13,7 @@ RUN apt-get update \
         > /etc/apt/sources.list.d/mega.list \
     && apt-get update \
     && apt-get install -y --no-install-recommends megacmd \
+    && rm -f /etc/apt/sources.list.d/mega.list \
     && apt-get purge -y --auto-remove curl gnupg \
     && rm -rf /var/lib/apt/lists/*
 
