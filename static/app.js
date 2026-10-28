@@ -435,14 +435,14 @@ async function loadSettings() {
     $("#google-connect").textContent = connections.google ? "Połącz ponownie" : "Połącz Drive";
     $("#google-cloud .connection-state").textContent = connections.google ? "Token zapisany" : "Niepołączono";
     $("#mega-status").textContent = !connections.mega_supported
-      ? "Niedostępna na tym planie Render; wymaga hostingu z MEGAcmd."
+      ? "MEGA jest wyłączone w konfiguracji serwera."
       : connections.mega ? "Skonfigurowano adres WebDAV MEGAcmd." : "Wymaga lokalnej konfiguracji MEGAcmd na serwerze.";
     $("#mega-cloud .connection-state").textContent = !connections.mega_supported
-      ? "Niedostępne" : connections.mega ? "Skonfigurowano" : "Niepołączono";
+      ? "Wyłączone" : connections.mega ? "Skonfigurowano" : "Niepołączono";
     const megaFilter = $('.chip[data-provider="mega"]');
     if (megaFilter) {
       megaFilter.disabled = !connections.mega_supported;
-      megaFilter.title = connections.mega_supported ? "" : "MEGA wymaga hostingu z MEGAcmd.";
+      megaFilter.title = connections.mega_supported ? "" : "MEGA jest wyłączone w konfiguracji serwera.";
     }
     const available = Object.entries(usage.storage).filter(([, data]) => data.available);
     const total = available.reduce((sum, [, data]) => sum + (data.total || 0), 0);

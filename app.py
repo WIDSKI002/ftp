@@ -570,7 +570,7 @@ def create_app(overrides=None):
             return drive
         if name == "mega":
             if not app.config["MEGA_ENABLED"]:
-                raise AppError("MEGA nie jest obsługiwane na tym hostingu. Użyj własnego VPS-a z MEGAcmd.", 409)
+                raise AppError("MEGA jest wyłączone w konfiguracji serwera.", 409)
             mega = app.extensions["mega"]
             if not app.config.get("MEGA_WEBDAV_URL"):
                 raise AppError("Skonfiguruj MEGAcmd i MEGA_WEBDAV_URL.", 409)

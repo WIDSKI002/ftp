@@ -1,5 +1,6 @@
 import io
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -10,6 +11,7 @@ from unittest.mock import Mock, patch
 from cryptography.fernet import Fernet
 
 from app import GoogleDrive, MegaWebDAV, PostgresDatabase, create_app, get_db, hash_password, verify_password
+from render_start import configure_mega, webdav_root_url
 
 
 class FakeResponse:
@@ -293,6 +295,30 @@ class CloudVaultTests(unittest.TestCase):
         self.app.config["MEGA_WEBDAV_URL"] = "http://127.0.0.1:4443/random/"
         with self.assertRaises(Exception):
             adapter._url("/../outside")
+
+    def test_render_start_configures_mega_from_server_environment(self):
+        identity = SimpleNamespace(returncode=1, stdout="", stderr="")
+        login = SimpleNamespace(returncode=0, stdout="", stderr="")
+        webdav = SimpleNamespace(returncode=0, stdout="", stderr="")
+        listing = SimpleNamespace(
+            returncode=0,
+            stdout="WEBDAV SERVED LOCATIONS:\n/: http://127.0.0.1:4443/root-token/",
+            stderr="",
+        )
+        with patch.dict(
+            os.environ,
+            {"MEGA_ENABLED": "true", "MEGA_EMAIL": "owner@example.test", "MEGA_PASSWORD": "server-secret"},
+            clear=False,
+        ), patch("render_start.subprocess.run", side_effect=[identity, login, webdav, listing]) as run:
+            configure_mega()
+            self.assertEqual(os.environ["MEGA_WEBDAV_URL"], "http://127.0.0.1:4443/root-token/")
+        self.assertEqual(run.call_args_list[1].args[0], ["mega-login", "owner@example.test", "server-secret"])
+
+    def test_render_start_rejects_non_local_or_missing_webdav_root(self):
+        with self.assertRaises(RuntimeError):
+            webdav_root_url("/: https://webdav.example.test/private/")
+        with self.assertRaises(RuntimeError):
+            webdav_root_url("MEGAcmd WebDAV is not configured")
 
     def test_google_resumable_upload_encrypts_tokens_and_sends_file_bytes(self):
         self.app.config["TOKEN_ENCRYPTION_KEY"] = Fernet.generate_key().decode()

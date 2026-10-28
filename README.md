@@ -6,7 +6,7 @@ Prywatny, jednoosobowy menedżer Google Drive i MEGA z trwałymi notatkami. Inte
 
 - **Python 3.11+ / Flask / SQLite lokalnie albo PostgreSQL na hostingu** — serwer, notatki i ulubione.
 - **Google Drive API v3 + OAuth 2.0** — oficjalne API Google. Token odświeżania jest szyfrowany kluczem Fernet przed zapisaniem w bazie; aplikacja nie pyta o hasło Google. Używa scope `drive`, bo aplikacja zarządza plikami, które użytkownik wybierze w swoim prywatnym koncie.
-- **MEGA przez oficjalny MEGAcmd** — oficjalna dokumentacja MEGA opisuje MEGAcmd jako skryptowalne narzędzie oraz jego serwer WebDAV. Aplikacja rozmawia z lokalnym WebDAV MEGAcmd (PROPFIND, GET, PUT, MKCOL, MOVE, DELETE); nie używa nieoficjalnej biblioteki Node ani nieimplementuje własnej kryptografii MEGA. MEGAcmd musi działać i być zalogowany na tym samym komputerze/konto systemowym co CloudVault.
+- **MEGA przez oficjalny MEGAcmd** — oficjalna dokumentacja MEGA opisuje MEGAcmd jako skryptowalne narzędzie oraz jego serwer WebDAV. Aplikacja rozmawia z lokalnym WebDAV MEGAcmd (PROPFIND, GET, PUT, MKCOL, MOVE, DELETE); nie implementuje własnej kryptografii MEGA. Na Renderze obraz Docker instaluje MEGAcmd, a usługa loguje konto przy starcie z sekretów ustawionych w Render Environment.
 - **SQLite lokalnie / PostgreSQL na Renderze** — notatki, tokeny i ulubione są trwale zapisywane w skonfigurowanej bazie. Bezpłatny Render ma tymczasowy system plików, więc na hostingu używaj zewnętrznej bazy Neon przez `DATABASE_URL`, a nie lokalnego SQLite.
 
 MEGA WebDAV nie podaje wiarygodnego limitu wolnego miejsca konta. Dlatego aplikacja nie zgaduje: automatyczny wybór używa wolnego miejsca zwracanego przez Drive oraz opcjonalnego `MEGA_FREE_BYTES`. Jeżeli nie da się ustalić, że choć jeden dysk ma miejsce na cały plik, aplikacja zatrzymuje przesyłanie i prosi o ręczny wybór. Pojedyncze pliki nigdy nie są dzielone między dyski. Zewnętrzne konta Google/MEGA i uprawnienia OAuth wymagają konfiguracji właściciela; testy nie podszywają się pod prawdziwe konto.
@@ -60,13 +60,15 @@ Tryb testowy ekranu zgody Google może ograniczać dostęp do wskazanych kont te
 
 W dokumentacji MEGA wersja MEGAcmd 2.7.0 opisuje WebDAV i wymienia przykładowy adres `http://127.0.0.1:4443/...`. Dostępność poleceń lub zachowanie WebDAV zależy od zainstalowanej wersji. Przed użyciem na ważnych plikach przetestuj tworzenie folderu, przesyłanie, pobieranie, zmianę nazwy, przenoszenie i usuwanie na plikach testowych.
 
-## Darmowe wdrożenie na Render + Neon (MEGA wyłączone)
+## Wdrożenie na Render + Neon (MEGA przez MEGAcmd)
 
 Gotowa konfiguracja znajduje się w [`render.yaml`](./render.yaml). Render Free może uruchomić aplikację i zapewnia adres HTTPS `*.onrender.com`, ale usypia usługę po 15 minutach bez ruchu; pierwsze wejście po przerwie może czekać około minuty. Darmowy plan ma też limity zasobów, miesięcznych godzin i transferu. To wariant hobbystyczny, bez gwarancji dostępności.
 
 Render Free ma nietrwały lokalny dysk i nie obsługuje persistent disks. **Nie zapisuj bazy SQLite na Renderze.** Utwórz bazę PostgreSQL w [Neon](https://neon.com/), którego plan Free według aktualnej oferty nie wymaga karty. Baza Neon może usypiać się po bezczynności; skonfiguruj kopie zapasowe i sprawdzaj aktualne limity dostawcy.
 
-**MEGA jest celowo wyłączone w konfiguracji Render Free** (`MEGA_ENABLED=false`). Obecny adapter wymaga procesu MEGAcmd i lokalnego WebDAV, których nie uruchamiamy jako trwałej usługi na Renderze. Google Drive nadal działa po skonfigurowaniu OAuth. Użyj VPS-a lub innego hosta z długotrwale działającym MEGAcmd, jeśli MEGA jest konieczne.
+Render uruchamia aplikację z [Dockerfile](./Dockerfile), który instaluje oficjalny pakiet MEGAcmd. Przy starcie usługa loguje się do MEGA, uruchamia WebDAV wyłącznie lokalnie i przekazuje adres do aplikacji. Nie trzeba udostępniać portu WebDAV publicznie ani uruchamiać drugiego serwera.
+
+Render Free usypia usługę po okresie bezczynności i ma nietrwały system plików. Przy restarcie MEGAcmd zaloguje się ponownie z sekretów. Trwałe przechowywanie notatek nadal wymaga zewnętrznej bazy Neon (`DATABASE_URL`). Transfer dużych plików podlega limitom pamięci, czasu i transferu planu Render.
 
 ### Przygotowanie kont i wdrożenie
 
@@ -80,10 +82,10 @@ Render Free ma nietrwały lokalny dysk i nie obsługuje persistent disks. **Nie 
    python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
    ```
 
-4. W [Render Dashboard](https://dashboard.render.com/) wybierz **New → Blueprint**, połącz repozytorium i zatwierdź `render.yaml`. Wartości `SECRET_KEY` Render generuje sam. Ustaw prywatnie wymagane zmienne Blueprint: `ADMIN_PASSWORD_HASH`, `TOKEN_ENCRYPTION_KEY`, `DATABASE_URL`. Nie dodawaj zmiennych z danymi logowania do repo.
+4. W [Render Dashboard](https://dashboard.render.com/) wybierz **New → Blueprint**, połącz repozytorium i zatwierdź `render.yaml`. Wartości `SECRET_KEY` Render generuje sam. Ustaw prywatnie wymagane zmienne Blueprint: `ADMIN_PASSWORD_HASH`, `TOKEN_ENCRYPTION_KEY`, `DATABASE_URL`, `MEGA_EMAIL` oraz `MEGA_PASSWORD`. Wpisz login i hasło do MEGA wyłącznie w Dashboard → Environment — nigdy w repozytorium, logach ani pliku `.env` w Git. Automatyczne logowanie w tym wdrożeniu zakłada wyłączone 2FA.
 5. Poczekaj na pierwsze wdrożenie i otwórz adres usługi `https://<nazwa>.onrender.com`. Dodaj go do zakładek na pozostałych urządzeniach.
 6. Aby podłączyć Drive, utwórz OAuth client typu Web application w Google Cloud Console, a jako Authorized redirect URI oraz `GOOGLE_REDIRECT_URI` ustaw dokładnie `https://<nazwa>.onrender.com/oauth/google/callback`. W Render Dashboard w **Environment** wpisz `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` i `GOOGLE_REDIRECT_URI`, zapisz i wdroż ponownie. Zaloguj się do CloudVault i połącz Drive w Ustawieniach.
-7. Sprawdź logowanie, utwórz testową notatkę, odśwież stronę i potwierdź, że notatka nadal jest widoczna. Wykonaj też kopię bazy Neon zgodnie z aktualną ofertą dostawcy.
+7. Po zapisaniu zmiennych Render przebuduje obraz i przy starcie zaloguje konto MEGA; jeżeli połączenie się nie powiedzie, sprawdź log startowy usługi. Sprawdź logowanie, utwórz testową notatkę, odśwież stronę i potwierdź, że notatka nadal jest widoczna. Wykonaj też kopię bazy Neon zgodnie z aktualną ofertą dostawcy.
 
 Plik Blueprint ustawia limit uploadu na 25 MB, aby ograniczyć zużycie pamięci darmowej usługi. Adres `onrender.com` i HTTPS są dostarczane bez kupowania domeny. Zmiana kodu w gałęzi GitHub podłączonej do Render wywołuje kolejne wdrożenie.
 

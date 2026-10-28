@@ -1,10 +1,10 @@
 services:
   - type: web
     name: cloudvault
-    runtime: python
+    runtime: docker
     plan: free
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 120 "app:create_app()"
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     healthCheckPath: /health
     envVars:
       - key: SECRET_KEY
@@ -22,7 +22,11 @@ services:
       - key: MAX_UPLOAD_MB
         value: "25"
       - key: MEGA_ENABLED
-        value: "false"
+        value: "true"
+      - key: MEGA_EMAIL
+        sync: false
+      - key: MEGA_PASSWORD
+        sync: false
       - key: GOOGLE_CLIENT_ID
         sync: false
       - key: GOOGLE_CLIENT_SECRET
